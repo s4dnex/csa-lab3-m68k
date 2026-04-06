@@ -3,7 +3,6 @@ buf:             .byte  0
 
     .data
 .org             0x42
-buf_size:        .word  0x40
 input_addr:      .word  0x80
 output_addr:     .word  0x84
 
@@ -12,9 +11,9 @@ output_addr:     .word  0x84
 encoded_buf:     .byte  0
 
     .text
-    .org     0xE0
+.org             0xE0
 _start:
-    movea.l  0x1000, A7
+    movea.l  0x500, A7
 
     ; A5 - output address
     movea.l  output_addr, A5
@@ -35,10 +34,10 @@ read_str_loop:
     move.b   (A4), (A3, D7)
 
     add.l    1, D7
-    cmp.l    0x40, D7
+    cmp.l    0x40, D7               ; 0x40 = max buffer size
     bgt      buf_overflow_exit
 
-    cmp.b    0xA, -1(A3, D7)
+    cmp.b    0xA, -1(A3, D7)        ; 0xA = '\n'
     bne      read_str_loop
 
     sub.l    1, D7
@@ -46,17 +45,12 @@ read_str_loop:
 
 
 base64_encoding_init:
-    ; ; A1 - index to traverse buffer
-    ; movea.l  0, A1
-
-    ; ; A2 - encoded buffer pointer to last char
-    ; movea.l encoded_buf, A2
-
-    ; ; D7 - encoded buffer length
-    ; movea.l 0, D6
+    ; A3 - buffer address
 
     ; A2 - encoded buffer address
     movea.l  encoded_buf, A2
+
+    ; D7 - buffer size
 
     ; D6 - buffer index
     move.l   0, D6
@@ -67,7 +61,7 @@ base64_encoding_init:
 
 base64_encoding_loop:
     cmp.l    D6, D7
-    ble      print_str
+    ble      print_str_init
 
     move.b   (A3, D6), -(A7)
     move.b   1(A3, D6), -(A7)
@@ -77,9 +71,7 @@ base64_encoding_loop:
     jsr      encode_base64_triple
     move.b   0, (A7)+
     move.b   0, (A7)+
-
     move.b   0, (A7)+
-
 
     move.b   D0, (A2, D5)
     move.b   D1, 1(A2, D5)
@@ -90,59 +82,67 @@ base64_encoding_loop:
     jmp      base64_encoding_loop
 
     ; encode_base64(byte symbol1, byte symbol2, byte symbol3)
-    ; takes 3 ASCII symbols and encodes them as base64
+    ; takes 3 ASCII symbols
     ; "returns" 4 base64 encoded bytes in D0-D3
 encode_base64_triple:
-    link     A6, 3
+    link     A6, 4
 
-    move.b   7(A6), D0
+    ; symbol1
+    move.b   10(A6), D0
     lsr.b    2, D0
     move.b   D0, -(A7)
     jsr      encode_base64
-    move.b   D0, -3(A6)
+    move.b   D0, -1(A6)                      ; save to local var 1
     move.b   0, (A7)+
 
-    move.b   7(A6), D0
+    ; symbol2
+    move.b   10(A6), D0
     lsl.b    6, D0
     lsr.b    2, D0
-    move.b   6(A6), D1
+    move.b   9(A6), D1
     lsr.b    4, D1
     or.b     D1, D0
     move.b   D0, -(A7)
     jsr      encode_base64
-    move.b   D0, -2(A6)
+    move.b   D0, -2(A6)                      ; save to local var 2
     move.b   0, (A7)+
 
-    move.b   6(A6), D0
+    ; symbol3
+    move.b   9(A6), D0
     lsl.b    4, D0
     lsr.b    2, D0
-    move.b   5(A6), D1
+    move.b   8(A6), D1
     lsr.b    6, D1
     or.b     D1, D0
     move.b   D0, -(A7)
     jsr      encode_base64
-    move.b   D0, -1(A6)
+    move.b   D0, -3(A6)                      ; save to local var 3
     move.b   0, (A7)+
 
-    move.b   5(A6), -(A7)
+    ; symbol4
+    move.b   8(A6), D0
+    and.b    0x3F, D0
+    move.b   D0, -(A7)
     jsr      encode_base64
+    move.b   D0, -4(A6)                      ; save to local var 4
+    move.b   0, (A7)+
 
-    move.b   D0, D3
-    move.b   -1(A6), D2
+
+    move.b   -1(A6), D0
     move.b   -2(A6), D1
-    move.b   -3(A6), D0
+    move.b   -3(A6), D2
+    move.b   -4(A6), D3
 
     unlk     A6
     rts
 
     ; encode_base64(byte symbol)
-    ; takes 6 bits of given parameter
-    ; "returns" corresponding symbol in ASCII of these 6 bits base64 encoding in D0
+    ; takes 6 bits of given symbol
+    ; "returns" corresponding symbol in ASCII of these 6 bits of base64 encoding in D0
 encode_base64:
-    link     A6, 1
-
-    move.b   1(A6), D0
-    and.b    0x3F, D0
+    link     A6, 0
+    move.b   8(A6), D0
+    and.b    0x3F, D0                        ; take 6 bits
 
     ; 0 - 25 = A - Z
     cmp.b    25, D0
@@ -182,7 +182,11 @@ encode_base64_return:
     rts
 
 
-print_str:
+print_str_init:
+    ; A5 - output address
+
+    ; A2 - encoded buffer address
+
     ; D6 - encoded buffer index
     move.l   0, D6
 
