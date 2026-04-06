@@ -2,7 +2,7 @@
 
 > Вариант: **base64_encoding**
 > 
-<!-- > > [Wrench Simulation Report](link here) -->
+> [Wrench Simulation Report](https://wrench.edu.swampbuds.me/report/1aec829c-d1ea-42d5-9641-c0edc5ab791d)
 
 ```python
 def base64_encoding(input):
