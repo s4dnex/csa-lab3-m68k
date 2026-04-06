@@ -1,0 +1,21 @@
+name: "assert base64_encoding('0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef0\n') == ([-858993460], '0\n')"
+limit: 2000
+memory_size: 0x1000
+memory_mapped_io:
+  0x80: [48, 49, 50, 51, 52, 53, 54, 55, 56, 57, 97, 98, 99, 100, 101, 102, 48, 49, 50, 51, 52, 53, 54, 55, 56, 57, 97, 98, 99, 100, 101, 102, 48, 49, 50, 51, 52, 53, 54, 55, 56, 57, 97, 98, 99, 100, 101, 102, 48, 49, 50, 51, 52, 53, 54, 55, 56, 57, 97, 98, 99, 100, 101, 102, 48, 10]
+  0x84: []
+reports:
+  - name: Check results
+    slice: last
+    filter:
+      - state
+    view: |
+      numio[0x80]: {io:0x80:dec}
+      numio[0x84]: {io:0x84:dec}
+      symio[0x80]: {io:0x80:sym}
+      symio[0x84]: {io:0x84:sym}
+    assert: |
+      numio[0x80]: [48,10] >>> []
+      numio[0x84]: [] >>> [-858993460]
+      symio[0x80]: "0\n" >>> ""
+      symio[0x84]: "" >>> "?"
